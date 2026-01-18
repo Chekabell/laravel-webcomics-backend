@@ -7,6 +7,18 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class TagResource extends JsonResource
 {
+
+    protected bool $showDescription = false;
+    protected bool $showUsageCount = false;
+
+    // Фабричный метод для создания с параметрами
+    public static function makeWithOptions($resource, array $options = []): self
+    {
+        $instance = new static($resource);
+        $instance->showDescription = $options['description'] ?? false;
+        $instance->showUsageCount = $options['usage_count'] ?? false;
+        return $instance;
+    }
     /**
      * Transform the resource into an array.
      *
@@ -17,35 +29,14 @@ class TagResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'slug' => $this->slug,
-            'description' => $this->description,
-            'usage_count' => $this->usage_count,
-
-            // Статистика
-            'comics_count' => $this->whenLoaded('comics', function () {
-                return $this->comics->count();
-            }),
-
-            // Связи
-            'comics' => $this->when(
-                $request->has('with_comics') && $this->relationLoaded('comics'),
-                ComicResource::collection($this->comics->take(5))
+            'description' => $this->when(
+                $this->showDescription,
+                $this->description
             ),
-
-            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
-            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
-        ];
-    }
-
-    /**
-     * Дополнительные данные для ответа.
-     */
-    public function with(Request $request): array
-    {
-        return [
-            'links' => [
-                'self' => route('api.tags.comics', $this->slug),
-            ],
+            'usage_count' => $this->when(
+                $this->showUsageCount,
+                $this->usage_count
+            ),
         ];
     }
 }

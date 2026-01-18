@@ -12,23 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('comic_tag', function (Blueprint $table) {
-             $table->foreignId('comic_id')
-              ->constrained('comics')
-              ->cascadeOnDelete()
-              ->comment('ID комикса');
+            $table->foreignId('comic_id')
+            ->constrained('comics')
+            ->cascadeOnDelete();
 
-        $table->foreignId('tag_id')
-              ->constrained('tags')
-              ->cascadeOnDelete()
-              ->comment('ID тега');
+            $table->foreignId('tag_id')
+                ->constrained('tags')
+                ->restrictOnDelete();
 
-        // Составной первичный ключ
-        $table->primary(['comic_id', 'tag_id']);
+            // Составной первичный ключ
+            $table->primary(['comic_id', 'tag_id']);
 
-        // Индексы для быстрого поиска в обе стороны
-        $table->index(['tag_id', 'comic_id']);
+            // Индексы для быстрого поиска в обе стороны
+            $table->index(['tag_id', 'comic_id']);
 
-        $table->timestamps();
+            $table->timestamps();
         });
     }
 

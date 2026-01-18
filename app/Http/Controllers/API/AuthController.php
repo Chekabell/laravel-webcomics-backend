@@ -58,7 +58,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => new UserResource($user),
+            'user' => new UserResource($user, options:['role','image']),
             'token' => $token,
             'token_type' => 'Bearer'
         ]);
@@ -69,25 +69,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Получаем ID текущего токена
-        $currentTokenId = $request->user()->currentAccessToken()->id;
-        // Удаляем токен с этим ID через отношение
-        $request->user()->tokens()->where('id', $currentTokenId)->delete();
+        // Отзываем все старые токены
+        $request->user()?->tokens()->delete();
 
         return response()->json([
             'message' => 'Successfully logged out'
-        ]);
-    }
-
-    /**
-     * Выход со всех устройств.
-     */
-    public function logoutAll(Request $request)
-    {
-        $request->user()->tokens()->delete();
-
-        return response()->json([
-            'message' => 'Successfully logged out from all devices'
         ]);
     }
 
@@ -96,6 +82,6 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        return response()->json(new UserResource($request->user()));
+        return response()->json(new UserResource($request->user(), options: ['role', 'image']));
     }
 }

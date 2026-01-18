@@ -20,17 +20,14 @@ class Comic extends Model
         'type',
         'cover_image',
         'images',
-        'external_link',
         'cached_rating',
         'cached_ratings_count',
         'cached_views_count',
         'cached_comments_count',
         'cached_chapters_count',
-        'cached_pages_count',
         'metadata',
         'status',
         'is_featured',
-        'reading_time',
         'published_at',
     ];
 
@@ -41,18 +38,14 @@ class Comic extends Model
         'cached_views_count' => 'integer',
         'cached_comments_count' => 'integer',
         'cached_chapters_count' => 'integer',
-        'cached_pages_count' => 'integer',
-        'images' => 'array',
         'metadata' => 'array',
         'is_featured' => 'boolean',
-        'reading_time' => 'integer',
         'published_at' => 'datetime',
     ];
 
     protected $appends = [
         'cover_image_url',
         'has_chapters',
-        'avg_pages_per_chapter',
     ];
 
     public function author()
@@ -68,13 +61,6 @@ class Comic extends Model
     public function chapters()
     {
         return $this->hasMany(Chapter::class)->orderBy('chapter_number');
-    }
-
-     public function publishedChapters()
-    {
-        return $this->hasMany(Chapter::class)
-                   ->where('status', 'published')
-                   ->orderBy('chapter_number');
     }
 
     public function rates()
@@ -98,15 +84,11 @@ class Comic extends Model
     {
         return Attribute::make(
             get: function () {
-                if (!$this->cover_image) {
-                    return $this->getDefaultCoverUrl();
+                if(!$this->cover_image){
+                    return Storage::disk('s3')->url('default/default-cover.webp');
                 }
 
-                if (filter_var($this->cover_image, FILTER_VALIDATE_URL)) {
-                    return $this->cover_image;
-                }
-
-                return Storage::url($this->cover_image);
+                return $this->cover_image;
             }
         );
     }
@@ -118,35 +100,18 @@ class Comic extends Model
         );
     }
 
-    protected function avgPagesPerChapter(): Attribute
-    {
-        return Attribute::make(
-            get: function () {
-                if ($this->cached_chapters_count == 0) return 0;
-                return round($this->cached_pages_count / $this->cached_chapters_count, 1);
-            }
-        );
-    }
-
     protected function firstChapter(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->publishedChapters()->orderBy('chapter_number')->first()
+            get: fn () => $this->chapters()->orderBy('chapter_number')->first()
         );
     }
 
     protected function lastChapter(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->publishedChapters()->orderBy('chapter_number', 'desc')->first()
+            get: fn () => $this->chapters()->orderBy('chapter_number', 'desc')->first()
         );
-    }
-
-    // ============ МЕТОДЫ ============
-
-    protected function getDefaultCoverUrl(): string
-    {
-        return asset('images/default-comic-cover.jpg');
     }
 
     public function incrementViews(): void
@@ -170,7 +135,7 @@ class Comic extends Model
 
     public function recalculateChapterCounters(): void
     {
-        $publishedChapters = $this->publishedChapters();
+        $publishedChapters = $this->chapters();
 
         $this->updateQuietly([
             'cached_chapters_count' => $publishedChapters->count(),
@@ -203,31 +168,33 @@ class Comic extends Model
         ]);
     }
 
-    public function getReadingProgress(User $user): array
+    public function isPublished(): bool
     {
-        $progress = $this->readingProgress()
-                        ->where('user_id', $user->id)
-                        ->first();
-
-        if (!$progress) {
-            return [
-                'chapter' => $this->firstChapter,
-                'page' => 1,
-                'percentage' => 0,
-                'is_started' => false,
-            ];
+        if ($this->status === 'published') {
+            return true;
         }
-
-        return [
-            'chapter' => $progress->chapter,
-            'page' => $progress->current_page,
-            'percentage' => $progress->read_percentage,
-            'is_started' => true,
-            'last_read_at' => $progress->last_read_at,
-        ];
+        return false;
     }
 
     // ============ SCOPES ============
+
+    public function scopeSearch($query, string $searchTerm)
+    {
+        if (strlen($searchTerm) <= 2) {
+            return $query->where('title', 'ILIKE', $searchTerm . '%');
+        } else {
+            return $query->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'ILIKE', '%' . $searchTerm . '%') // Точная подстрока
+                ->orWhereRaw('title % ?', [$searchTerm]); // Триграммы для опечаток
+            })->orderByRaw('
+                CASE
+                    WHEN title ILIKE ? THEN 1
+                    WHEN title % ? THEN 2
+                    ELSE 3
+                END
+            ', ['%' . $searchTerm . '%', $searchTerm]);
+        }
+    }
 
     public function scopePublished($query)
     {
@@ -251,5 +218,10 @@ class Comic extends Model
     public function scopeOfType($query, string $type)
     {
         return $query->where('type', $type);
+    }
+
+    public function scopeFeatured($query)
+    {
+        return $query->where('is_featured', true);
     }
 }

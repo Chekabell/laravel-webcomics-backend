@@ -15,11 +15,6 @@ class Comment extends Model
         'comic_id',
         'text',
         'parent_id',
-        'is_approved',
-    ];
-
-    protected $casts = [
-        'is_approved' => 'boolean',
     ];
 
     // ============ СВЯЗИ ============
@@ -44,29 +39,7 @@ class Comment extends Model
         return $this->hasMany(Comment::class, 'parent_id')->orderBy('created_at');
     }
 
-    // ============ SCOPES ============
-
-    public function scopeApproved($query)
-    {
-        return $query->where('is_approved', true);
-    }
-
-    public function scopeRootComments($query)
-    {
-        return $query->whereNull('parent_id');
-    }
-
     // ============ МЕТОДЫ ============
-
-    public function approve(): bool
-    {
-        return $this->update(['is_approved' => true]);
-    }
-
-    public function reject(): bool
-    {
-        return $this->update(['is_approved' => false]);
-    }
 
     public function hasReplies(): bool
     {

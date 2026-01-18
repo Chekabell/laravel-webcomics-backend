@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('tags', function (Blueprint $table) {
             $table->id();
             $table->string('title')->unique();
-            $table->string('slug')->unique()->comment('URL-версия названия');
             $table->text('description')->nullable();
             $table->unsignedInteger('usage_count')->default(0)
                 ->index()

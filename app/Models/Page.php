@@ -9,20 +9,14 @@ use Illuminate\Support\Facades\Storage;
 
 class Page extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'chapter_id',
         'page_number',
-        'image_path',
-        'image_url',
+        'image',
         'width',
         'height',
         'format',
         'file_size',
-        'is_compressed',
-        'thumbnail_path',
-        'metadata',
     ];
 
     protected $casts = [
@@ -30,8 +24,6 @@ class Page extends Model
         'width' => 'integer',
         'height' => 'integer',
         'file_size' => 'integer',
-        'is_compressed' => 'boolean',
-        'metadata' => 'array',
     ];
 
     protected $appends = ['image_url_final'];
@@ -49,23 +41,10 @@ class Page extends Model
     {
         return Attribute::make(
             get: function () {
-                // Приоритет: 1) image_url, 2) thumbnail_path, 3) image_path
-                if ($this->image_url) {
-                    return $this->image_url;
+                if($this->image){
+                    Storage::disk('s3')->url('default/default-chapter.png');
                 }
-
-                if ($this->thumbnail_path) {
-                    if (filter_var($this->thumbnail_path, FILTER_VALIDATE_URL)) {
-                        return $this->thumbnail_path;
-                    }
-                    return Storage::url($this->thumbnail_path);
-                }
-
-                if (filter_var($this->image_path, FILTER_VALIDATE_URL)) {
-                    return $this->image_path;
-                }
-
-                return Storage::url($this->image_path);
+                return $this->image;
             }
         );
     }

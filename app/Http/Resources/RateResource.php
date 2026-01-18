@@ -23,7 +23,6 @@ class RateResource extends JsonResource
                 return [
                     'id' => $this->user->id,
                     'name' => $this->user->name,
-                    'image_url' => $this->user->image_url,
                 ];
             }),
 
@@ -32,12 +31,8 @@ class RateResource extends JsonResource
                 return [
                     'id' => $this->comic->id,
                     'title' => $this->comic->title,
-                    'cover_image_url' => $this->comic->cover_image_url,
                 ];
             }),
-
-            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
-            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }
 }

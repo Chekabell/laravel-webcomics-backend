@@ -8,7 +8,20 @@ use Illuminate\Support\Facades\Storage;
 
 class UserResource extends JsonResource
 {
-       /**
+    protected bool $showRole = false;
+    protected bool $showImage = false;
+
+    public function __construct($resource,  $index = null, ?array $options = null,)
+    {
+        parent::__construct($resource);
+
+        if (is_array($options)) {
+            $this->showRole = in_array('role',$options) ? true : false;
+            $this->showImage = in_array('image',$options) ? true : false;
+        }
+    }
+
+    /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
@@ -22,45 +35,14 @@ class UserResource extends JsonResource
                 $request->user()?->isAdmin() || $request->user()?->id === $this->id,
                 $this->email
             ),
-            'image' => $this->image,
-            'image_url' => $this->getImageUrl(),
+            'image' => $this->when(
+                $this->showImage,
+            $this->image_url
+            ),
             'role' => $this->when(
-                $request->user()?->isAdmin(),
+                $this->showRole,
                 $this->role
             ),
-            'is_admin' => $this->isAdmin(),
-            'is_writer' => $this->isWriter(),
-            'is_reader' => $this->isReader(),
-            'stats' => $this->whenLoaded('comics_count', [
-                'comics_count' => $this->comics_count,
-            ]),
-            'comics' => ComicResource::collection($this->whenLoaded('comics')),
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
         ];
-    }
-
-    /**
-     * Получить URL изображения пользователя.
-     */
-    protected function getImageUrl(): ?string
-    {
-        if (!$this->image) {
-            return $this->getDefaultAvatar();
-        }
-
-        if (filter_var($this->image, FILTER_VALIDATE_URL)) {
-            return $this->image;
-        }
-
-        return Storage::url($this->image);
-    }
-
-    /**
-     * URL дефолтного аватара.
-     */
-    protected function getDefaultAvatar(): string
-    {
-        return asset('images/default-avatar.png');
     }
 }

@@ -20,9 +20,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \App\Models\Comic::observe(\App\Observers\ComicObserver::class);
-        \App\Models\Rate::observe(\App\Observers\RateObserver::class);
         \App\Models\Comment::observe(\App\Observers\CommentObserver::class);
-        \App\Models\Chapter::observe(\App\Observers\ChapterObserver::class);
+        \App\Models\Tag::observe(\App\Observers\TagObserver::class);
 
          // Настройка RateLimiter для API
         \Illuminate\Support\Facades\RateLimiter::for('api', function ($request) {

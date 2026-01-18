@@ -15,31 +15,27 @@ return new class extends Migration
             // 1. ОСНОВНЫЕ ПОЛЯ
             $table->id();
             $table->foreignId('author_id')
-                ->nullable()
                 ->constrained('users')
                 ->onDelete('set null')
-                ->comment('Автор комикса');
+                ->comment('Автор комикса или автор перевода');
 
             // 2. КОНТЕНТ
-            $table->string('title', 150);
+            $table->string('title', 200);
             $table->text('description')->nullable();
             $table->year('year')
                 ->default(date('Y'))
                 ->index()
                 ->comment('Год выпуска');
 
-            $table->enum('type', ['manga', 'manhwa', 'manhua', 'western', 'other'])
+            $table->enum('type', ['манга', 'манхва', 'маньхуа', 'западное', 'другое'])
                 ->default('manga')
                 ->index()
                 ->comment('Тип комикса');
 
             // 3. МЕДИА
             $table->string('cover_image')
+                ->nullable()
                 ->comment('Обложка в storage');
-            $table->json('images')->nullable()
-                ->comment('Дополнительные изображения');
-            $table->string('external_link')->nullable()
-                ->comment('Ссылка на оригинал');
 
             // 4. КЕШИРОВАННАЯ СТАТИСТИКА (оптимизация)
             $table->decimal('cached_rating', 3, 2)
@@ -67,16 +63,11 @@ return new class extends Migration
                 ->index()
                 ->comment('Количество глав (опубликованных)');
 
-            $table->unsignedInteger('cached_pages_count')
-                ->default(0)
-                ->index()
-                ->comment('Общее количество страниц во всех главах');
-
             // 5. МЕТАДАННЫЕ
             $table->json('metadata')->nullable()
                 ->comment('Доп. данные: жанры, возрастной рейтинг и т.д.');
 
-            $table->enum('status', ['draft', 'published', 'archived'])
+            $table->enum('status', ['draft', 'published'])
                 ->default('draft')
                 ->index()
                 ->comment('Статус публикации');
@@ -84,9 +75,6 @@ return new class extends Migration
             $table->boolean('is_featured')->default(false)
                 ->index()
                 ->comment('Закреплён в ленте');
-
-            $table->unsignedInteger('reading_time')->nullable()
-                ->comment('Время чтения в минутах');
 
             // 6. ТАЙМСТАМПЫ
             $table->timestamps();
@@ -100,12 +88,6 @@ return new class extends Migration
             $table->index(['type', 'year', 'cached_rating']);
             $table->index(['author_id', 'created_at']);
             $table->index(['is_featured', 'cached_rating', 'created_at']);
-            $table->index(['cached_chapters_count', 'cached_pages_count']);
-
-            // 8. ПОЛНОТЕКСТОВЫЙ ПОИСК (только для PostgreSQL/MySQL)
-            if (!app()->runningUnitTests() && config('database.default') !== 'sqlite') {
-                $table->fullText(['title', 'description']);
-            }
         });
     }
 

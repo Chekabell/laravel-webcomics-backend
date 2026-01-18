@@ -1,66 +1,210 @@
 <?php
 
-namespace App\Http\API\Controllers;
+namespace App\Http\Controllers\API;
 
-use App\Http\Controller;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Comic\IndexRequest;
+use App\Http\Requests\Comic\StoreRequest;
+use App\Http\Requests\Comic\UpdateRequest;
+use App\Http\Resources\ComicCollection;
+use App\Http\Resources\ComicResource;
 use App\Models\Comic;
+use App\Services\ComicService;
+use App\Services\TagService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
 
 class ComicController extends Controller
 {
+
+    public function __construct(
+        private TagService $tagService,
+        private ComicService $comicService
+    ) {}
+
     /**
-     * Display a listing of the resource.
+     * Получение списка комиксов с фильтрацией.
      */
-    public function index()
+    public function index(IndexRequest $indexRequest)
     {
-        //
+        $comics = $this->comicService->indexByFilter($indexRequest->toDTO());
+
+        return response()->json(
+        new ComicCollection($comics->with('tags')->paginate($indexRequest->per_page ?? 10)),
+        Response::HTTP_OK);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Создание нового комикса (только писатели и админы).
      */
-    public function create()
+    public function store(StoreRequest $storeRequest)
     {
-        //
+        //Валидация
+        $storeComicDTO = $storeRequest->toDTO();
+
+        //Сохранение комикса
+        $comic = $this->comicService->store(
+            $storeComicDTO,
+            $storeRequest->user()->id);
+
+        //Обработка тэгов
+        $this->tagService->syncComicTags(
+            $comic,
+            $storeRequest->input('tags')
+        );
+
+        return response()->json([
+            'comic' => new ComicResource($comic->load('tags'))
+        ] , Response::HTTP_CREATED);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Получение информации о комиксе.
      */
-    public function store(Request $request)
+    public function show(Request $request, Comic $comic)
     {
-        //
+        $user = $request->user();
+
+        if ($comic->status === 'draft') {
+            // Неавторизованные пользователи не имеют доступа
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $canRead = false;
+
+            if($user->isWriter() && $user->id === $comic->author_id)
+                $canRead = true;
+            elseif($user->isAdmin())
+                $canRead = true;
+
+            if (!$canRead) {
+                return response()->json(null, Response::HTTP_FORBIDDEN);
+            }
+        }
+
+        return response()->json(
+            new ComicResource($this->comicService->show($comic),
+            options: [
+                'description',
+                'year',
+                'ratingc_count',
+                'views_count',
+                'comments_count',
+                'chapters_count',
+                'has_chapters',
+                'rating_stars',
+                'published_at',
+            ]),
+            Response::HTTP_OK);
     }
 
     /**
-     * Display the specified resource.
+     * Обновление комикса (только автор или админ).
      */
-    public function show(Comic $comic)
+    public function update(UpdateRequest $updateRequest, Comic $comic)
     {
-        //
+        $canUpdate = false;
+
+        if($updateRequest->user()->isWriter() && $updateRequest->user()->id === $comic->author_id)
+            $canUpdate = true;
+        elseif($updateRequest->user()->isAdmin())
+            $canUpdate = true;
+
+        if (!$canUpdate) {
+            return response()->json(['error' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $updateComicDTO = $updateRequest->toDTO();
+
+        $this->comicService->update($updateComicDTO, $comic);
+
+        $this->tagService->syncComicTags(
+            $comic,
+            $updateRequest->input('tags')
+        );
+
+        return response()->json([
+            'comic' => new ComicResource($comic->fresh()->load('tags'))
+        ], Response::HTTP_OK);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Удаление комикса (только автор или админ).
      */
-    public function edit(Comic $comic)
+    public function destroy(Request $request, Comic $comic)
     {
-        //
+        //Проверка доступа
+        $canDelete = false;
+
+        if($request->user()->isWriter() && $request->user()->id === $comic->author_id)
+            $canDelete = true;
+        elseif($request->user()->isAdmin())
+            $canDelete = true;
+
+        if (!$canDelete) {
+            return response()->json(null, Response::HTTP_FORBIDDEN);
+        }
+
+        //Удаление
+        $this->comicService->destroy($comic);
+
+        //Синхронизация тэгов
+        $this->tagService->syncComicTags(
+            $comic,
+            null
+        );
+
+        return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Получение популярных комиксов.
      */
-    public function update(Request $request, Comic $comic)
+    public function popular()
     {
-        //
+        $cacheKey = 'comics.popular';
+
+        $comics = Cache::remember($cacheKey, 60*60, function () {
+            return Comic::published()
+                ->orderBy('cached_rating', 'desc')
+                ->orderBy('cached_views_count', 'desc')
+                ->limit(10)
+                ->get(['id', 'title', 'cover_image', 'cached_rating', 'cached_views_count']);
+        });
+
+        return response()->json($comics);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Получение новинок.
      */
-    public function destroy(Comic $comic)
+    public function newest()
     {
-        //
+        $cacheKey = 'comics.newest';
+
+        $comics = Cache::remember($cacheKey, 60*60, function () {
+            return Comic::published()
+                ->orderBy('published_at', 'desc')
+                ->limit(10)
+                ->get(['id', 'title', 'cover_image', 'published_at']);
+        });
+
+        return response()->json($comics);
+    }
+
+    public function featured()
+    {
+        $cacheKey = 'comics.featured';
+
+        $comics = Cache::remember($cacheKey, 60*60, function () {
+            return Comic::featured()
+                ->orderBy('published_at', 'desc')
+                ->limit(10)
+                ->get(['id', 'title', 'cover_image', 'published_at']);
+        });
+
+        return response()->json($comics);
     }
 }

@@ -27,17 +27,12 @@ return new class extends Migration
             $table->text('text')
                 ->comment('Текст комментария');
 
-            // Для ответов на комментарии (если будет иерархия)
+            // Для ответов на комментарии
             $table->foreignId('parent_id')
                 ->nullable()
                 ->constrained('comments')
                 ->nullOnDelete()
                 ->comment('Родительский комментарий');
-
-            // Для модерации
-            $table->boolean('is_approved')->default(true)
-                ->index()
-                ->comment('Проверен модератором');
 
             $table->softDeletes(); // Для скрытия, а не удаления
 

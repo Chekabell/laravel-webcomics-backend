@@ -7,6 +7,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ChapterResource extends JsonResource
 {
+    protected bool $showFullChapterNumber = false;
+    protected bool $showPagesCount = false;
+
+    // Фабричный метод для создания с параметрами
+    public static function makeWithOptions($resource, array $options = []): self
+    {
+        $instance = new static($resource);
+        $instance->showFullChapterNumber = $options['full_chapter_number'] ?? false;
+        $instance->showPagesCount = $options['pages_count'] ?? false;
+        return $instance;
+    }
     /**
      * Transform the resource into an array.
      *
@@ -17,42 +28,21 @@ class ChapterResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'chapter_number' => $this->chapter_number,
-            'chapter_decimal' => $this->chapter_decimal,
-            'full_chapter_number' => $this->full_chapter_number,
-            'slug' => $this->slug,
-            'description' => $this->description,
+            'chapter_number' => $this->when(!$this->showFullChapterNumber, $this->chapter_number),
+            'chapter_decimal' => $this->when(!$this->showFullChapterNumber, $this->chapter_decimal),
+            'full_chapter_number' => $this->when($this->showFullChapterNumber, $this->full_chapter_number),
 
             // Статистика
-            'pages_count' => $this->pages_count,
-            'views_count' => $this->views_count,
-
-            // Статус
-            'status' => $this->when(
-                $request->user()?->isWriter() || $request->user()?->id === $this->comic->author_id,
-                $this->status
-            ),
-            'is_published' => $this->is_published,
-            'is_free' => $this->is_free,
-            'price' => $this->price,
-
-            // Метаданные
-            'metadata' => $this->when(
-                $request->user()?->isWriter() || $request->user()?->id === $this->comic->author_id,
-                $this->metadata
-            ),
+            'pages_count' => $this->when($this->showPagesCount, $this->pages_count),
 
             // Даты
-            'published_at' => $this->published_at?->format('Y-m-d H:i:s'),
-            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
-            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
+            'published_at' => $this->published_at->format('Y-m-d H:i:s'),
 
             // Связи
             'comic' => $this->whenLoaded('comic', function () {
                 return [
                     'id' => $this->comic->id,
                     'title' => $this->comic->title,
-                    'type' => $this->comic->type,
                 ];
             }),
 
@@ -113,20 +103,6 @@ class ChapterResource extends JsonResource
                     ] : null;
                 }
             ),
-        ];
-    }
-
-    /**
-     * Дополнительные данные для ответа.
-     */
-    public function with(Request $request): array
-    {
-        return [
-            'links' => [
-                'self' => route('api.chapters.show', $this->id),
-                'comic' => route('api.comics.show', $this->comic_id),
-                'pages' => route('api.chapters.pages', $this->id),
-            ],
         ];
     }
 }

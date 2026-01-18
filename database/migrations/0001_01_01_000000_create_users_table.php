@@ -28,7 +28,6 @@ return new class extends Migration
             $table->timestamps();
 
             // Индексы для поиска
-            $table->index('email');
             $table->index('role');
             $table->index('deleted_at');
         });

@@ -6,14 +6,25 @@ use App\Models\Rate;
 
 class RateObserver
 {
-    public function saved(Rate $rate): void
+    /**
+     * После появления оценки.
+     */
+    public function created(Rate $rate){
+        $rate->comic()->recalculateRating();
+    }
+    /**
+     * После обновления оценки.
+     */
+    public function updated(Rate $rate): void
     {
-        // Обновляем кэш рейтинга комикса
-        $rate->comic->observer->ratingChanged($rate->comic);
+        $rate->comic()->recalculateRating();
     }
 
+    /**
+     * При удалении оценки.
+     */
     public function deleted(Rate $rate): void
     {
-        $rate->comic->observer->ratingChanged($rate->comic);
+        $rate->comic()->recalculateRating();
     }
 }
