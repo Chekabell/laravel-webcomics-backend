@@ -60,7 +60,7 @@ class Comic extends Model
 
     public function chapters()
     {
-        return $this->hasMany(Chapter::class)->orderBy('chapter_number');
+        return $this->hasMany(Chapter::class);
     }
 
     public function rates()
@@ -201,6 +201,11 @@ class Comic extends Model
         return $query->where('status', 'published')
                     ->whereNotNull('published_at')
                     ->where('published_at', '<=', now());
+    }
+
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
     }
 
     public function scopePopular($query)

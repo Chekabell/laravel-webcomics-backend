@@ -87,7 +87,6 @@ class ComicTagRepository
             ->whereIn('id', $tagIds)
             ->update([
                 'usage_count' => DB::raw('usage_count + 1'),
-                'updated_at' => DB::raw('NOW()')
             ]);
 
         Log::debug('Tags usage incremented', ['tag_ids' => $tagIds]);
@@ -108,7 +107,6 @@ class ComicTagRepository
             ->where('usage_count', '>', 0)
             ->update([
                 'usage_count' => DB::raw('CASE WHEN usage_count > 0 THEN usage_count - 1 ELSE 0 END'),
-                'updated_at' => DB::raw('NOW()')
             ]);
 
         Log::debug('Tags usage decremented', ['tag_ids' => $tagIds]);

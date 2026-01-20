@@ -18,8 +18,6 @@ return new class extends Migration
             $table->unsignedInteger('usage_count')->default(0)
                 ->index()
                 ->comment('Сколько раз тег использовался');
-
-            $table->timestamps();
         });
     }
 

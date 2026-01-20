@@ -19,23 +19,25 @@ class ComicResource extends JsonResource
     protected bool $showPublishedAt = false;
     protected bool $showCreatedAt = false;
     protected bool $showUpdatedAt = false;
+    protected bool $showFirstChapter = false;
     public function __construct($resource,  $index = null, ?array $options = null,)
     {
         parent::__construct($resource);
 
         if (is_array($options)) {
-            $this->showDescription = in_array('description',$options) ? true : false;
-            $this->showYear = in_array('year',$options) ? true : false;
-            $this->showRatingsCount = in_array('ratings_count',$options) ? true : false;
-            $this->showViewsCount = in_array('views_count',$options) ? true : false;
-            $this->showCommentsCount = in_array('comments_count',$options) ? true : false;
-            $this->showChaptersCount = in_array('chapters_count',$options) ? true : false;
-            $this->showHasChapters = in_array('has_chapters',$options) ? true : false;
-            $this->showRatingStars = in_array('rating_stars',$options) ? true : false;
-            $this->showIsFeatured = in_array('is_featured',$options) ? true : false;
-            $this->showPublishedAt = in_array('published_at',$options) ? true : false;
-            $this->showCreatedAt = in_array('created_at',$options) ? true : false;
-            $this->showUpdatedAt = in_array('updated_at',$options) ? true : false;
+            $this->showDescription = in_array('description', $options) ? true : false;
+            $this->showYear = in_array('year', $options) ? true : false;
+            $this->showRatingsCount = in_array('ratings_count', $options) ? true : false;
+            $this->showViewsCount = in_array('views_count', $options) ? true : false;
+            $this->showCommentsCount = in_array('comments_count', $options) ? true : false;
+            $this->showChaptersCount = in_array('chapters_count', $options) ? true : false;
+            $this->showHasChapters = in_array('has_chapters', $options) ? true : false;
+            $this->showRatingStars = in_array('rating_stars', $options) ? true : false;
+            $this->showIsFeatured = in_array('is_featured', $options) ? true : false;
+            $this->showPublishedAt = in_array('published_at', $options) ? true : false;
+            $this->showCreatedAt = in_array('created_at', $options) ? true : false;
+            $this->showUpdatedAt = in_array('updated_at', $options) ? true : false;
+            $this->showFirstChapter = in_array('first_chapter', $options) ? true : false;
         }
     }
 
@@ -48,10 +50,7 @@ class ComicResource extends JsonResource
                 $this->showDescription,
                 $this->description
             ),
-            'year' => $this->when(
-                $this->showYear,
-                $this->year
-            ),
+            'year' => $this->year,
             'type' => $this->type,
 
             // Изображения
@@ -132,12 +131,10 @@ class ComicResource extends JsonResource
             'chapters' => ChapterResource::collection($this->whenLoaded('chapters')),
 
             // Для навигации
-            'first_chapter' => $this->whenLoaded('chapters', function () {
-                return $this->first_chapter ? [
-                    'id' => $this->first_chapter->id,
-                    'chapter_number' => $this->first_chapter->chapter_number,
-                ] : null;
-            }),
+            'first_chapter' => $this->when(
+                $this->showFirstChapter,
+                $this->first_chapter
+            ),
 
             'last_chapter' => $this->whenLoaded('chapters', function () {
                 return $this->last_chapter ? [

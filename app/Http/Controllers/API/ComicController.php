@@ -28,11 +28,12 @@ class ComicController extends Controller
      */
     public function index(IndexRequest $indexRequest)
     {
-        $comics = $this->comicService->indexByFilter($indexRequest->toDTO());
+        $comics = $this->comicService->indexByFilter($indexRequest->toDTO(), $indexRequest->user());
 
         return response()->json(
-        new ComicCollection($comics->with('tags')->paginate($indexRequest->per_page ?? 10)),
-        Response::HTTP_OK);
+            new ComicCollection($comics->with('tags')->paginate($indexRequest->per_page ?? 5)),
+            Response::HTTP_OK
+        );
     }
 
     /**
@@ -46,7 +47,8 @@ class ComicController extends Controller
         //Сохранение комикса
         $comic = $this->comicService->store(
             $storeComicDTO,
-            $storeRequest->user()->id);
+            $storeRequest->user()->id
+        );
 
         //Обработка тэгов
         $this->tagService->syncComicTags(
@@ -54,9 +56,19 @@ class ComicController extends Controller
             $storeRequest->input('tags')
         );
 
-        return response()->json([
-            'comic' => new ComicResource($comic->load('tags'))
-        ] , Response::HTTP_CREATED);
+        return response()->json(new ComicResource(
+                $comic,
+                options: [
+                    'description',
+                    'ratingc_count',
+                    'views_count',
+                    'comments_count',
+                    'chapters_count',
+                    'has_chapters',
+                    'rating_stars',
+                    'published_at',
+                    'first_chapter'
+                ]), Response::HTTP_CREATED);
     }
 
     /**
@@ -74,9 +86,9 @@ class ComicController extends Controller
 
             $canRead = false;
 
-            if($user->isWriter() && $user->id === $comic->author_id)
+            if ($user->isWriter() && $user->id === $comic->author_id)
                 $canRead = true;
-            elseif($user->isAdmin())
+            elseif ($user->isAdmin())
                 $canRead = true;
 
             if (!$canRead) {
@@ -85,19 +97,22 @@ class ComicController extends Controller
         }
 
         return response()->json(
-            new ComicResource($this->comicService->show($comic),
-            options: [
-                'description',
-                'year',
-                'ratingc_count',
-                'views_count',
-                'comments_count',
-                'chapters_count',
-                'has_chapters',
-                'rating_stars',
-                'published_at',
-            ]),
-            Response::HTTP_OK);
+            new ComicResource(
+                $this->comicService->show($comic),
+                options: [
+                    'description',
+                    'ratingc_count',
+                    'views_count',
+                    'comments_count',
+                    'chapters_count',
+                    'has_chapters',
+                    'rating_stars',
+                    'published_at',
+                    'first_chapter',
+                ]
+            ),
+            Response::HTTP_OK
+        );
     }
 
     /**
@@ -107,9 +122,9 @@ class ComicController extends Controller
     {
         $canUpdate = false;
 
-        if($updateRequest->user()->isWriter() && $updateRequest->user()->id === $comic->author_id)
+        if ($updateRequest->user()->isWriter() && $updateRequest->user()->id === $comic->author_id)
             $canUpdate = true;
-        elseif($updateRequest->user()->isAdmin())
+        elseif ($updateRequest->user()->isAdmin())
             $canUpdate = true;
 
         if (!$canUpdate) {
@@ -125,9 +140,23 @@ class ComicController extends Controller
             $updateRequest->input('tags')
         );
 
-        return response()->json([
-            'comic' => new ComicResource($comic->fresh()->load('tags'))
-        ], Response::HTTP_OK);
+        return response()->json(
+            new ComicResource(
+                $comic->fresh(),
+                options: [
+                    'description',
+                    'ratingc_count',
+                    'views_count',
+                    'comments_count',
+                    'chapters_count',
+                    'has_chapters',
+                    'rating_stars',
+                    'published_at',
+                    'first_chapter',
+                ]
+            ),
+            Response::HTTP_OK
+        );
     }
 
     /**
@@ -138,9 +167,9 @@ class ComicController extends Controller
         //Проверка доступа
         $canDelete = false;
 
-        if($request->user()->isWriter() && $request->user()->id === $comic->author_id)
+        if ($request->user()->isWriter() && $request->user()->id === $comic->author_id)
             $canDelete = true;
-        elseif($request->user()->isAdmin())
+        elseif ($request->user()->isAdmin())
             $canDelete = true;
 
         if (!$canDelete) {
@@ -159,6 +188,24 @@ class ComicController extends Controller
         return response()->json(null, Response::HTTP_NO_CONTENT);
     }
 
+    public function publish(Request $request, Comic $comic)
+    {
+        $canPublish = false;
+
+        if ($request->user()->isWriter() && $request->user()->id === $comic->author_id)
+            $canPublish = true;
+        elseif ($request->user()->isAdmin())
+            $canPublish = true;
+
+        if (!$canPublish) {
+            return response()->json(['error' => 'Forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $comic->publish();
+
+        return response()->json($comic->status, Response::HTTP_OK);
+    }
+
     /**
      * Получение популярных комиксов.
      */
@@ -166,7 +213,7 @@ class ComicController extends Controller
     {
         $cacheKey = 'comics.popular';
 
-        $comics = Cache::remember($cacheKey, 60*60, function () {
+        $comics = Cache::remember($cacheKey, 60 * 60, function () {
             return Comic::published()
                 ->orderBy('cached_rating', 'desc')
                 ->orderBy('cached_views_count', 'desc')
@@ -184,7 +231,7 @@ class ComicController extends Controller
     {
         $cacheKey = 'comics.newest';
 
-        $comics = Cache::remember($cacheKey, 60*60, function () {
+        $comics = Cache::remember($cacheKey, 60 * 60, function () {
             return Comic::published()
                 ->orderBy('published_at', 'desc')
                 ->limit(10)
@@ -198,13 +245,13 @@ class ComicController extends Controller
     {
         $cacheKey = 'comics.featured';
 
-        $comics = Cache::remember($cacheKey, 60*60, function () {
+        $comics = Cache::remember($cacheKey, 1, function () {
             return Comic::featured()
                 ->orderBy('published_at', 'desc')
                 ->limit(10)
-                ->get(['id', 'title', 'cover_image', 'published_at']);
+                ->get();
         });
 
-        return response()->json($comics);
+        return response()->json(ComicResource::collection($comics));
     }
 }

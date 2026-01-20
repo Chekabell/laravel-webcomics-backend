@@ -24,7 +24,7 @@ class IndexRequest extends FormRequest
     {
         $rules = [
             'per_page' => 'sometimes|integer|min:1',
-            'type' => 'nullable|in:manga,manhwa,manhua,western,other',
+            'type' => 'nullable|in:манга,манхва,маньхуа,западное,другое',
             'yearMax' => 'nullable|integer|min:1900|max:' . date('Y')+1,
             'yearMin' => 'nullable|integer|min:1900',
             'status' => 'sometimes|in:draft,published',

@@ -82,24 +82,5 @@ class TagSeeder extends Seeder
         }
 
         $this->command->info("✅ Теги созданы: {$created} новых, {$skipped} уже существовали");
-
-        // Добавляем временные метки для реалистичности
-        $this->addTimestamps();
-    }
-
-    private function addTimestamps(): void
-    {
-        $tags = Tag::all();
-        $now = now();
-
-        foreach ($tags as $tag) {
-            $randomDate = $now->copy()->subDays(rand(0, 365));
-            $tag->update([
-                'created_at' => $randomDate,
-                'updated_at' => $randomDate->copy()->addDays(rand(0, 30)),
-            ]);
-        }
-
-        $this->command->info('✅ Временные метки тегов обновлены');
     }
 }

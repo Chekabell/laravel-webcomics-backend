@@ -26,7 +26,7 @@ class StoreRequest extends FormRequest
             'title' => 'required|string|max:255',
             'chapter_number' => 'required|integer|min:1',
             'chapter_decimal' => 'nullable|numeric|min:0|max:9',
-            'pages_zip' => 'required|file|mimes:zip|max:51200',
+            'pages_zip' => 'required|file|mimes:zip|max:256000',
         ];
     }
 

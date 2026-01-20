@@ -22,7 +22,7 @@ class StoreComicDTO{
             title: $data['title'],
             description: $data['description'] ?? null,
             year: $data['year'],
-            type: $data['type'] ?? 'other',
+            type: $data['type'] ?? 'другое',
             cover_image: $data['cover_image'] ?? null,
             tags: $data['tags'] ?? null,
             status: $data['status'] ?? 'draft',

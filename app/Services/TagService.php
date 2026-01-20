@@ -20,12 +20,7 @@ class TagService
     public function syncComicTags(Comic $comic, ?array $tagIds): array
     {
         if (is_null($tagIds)) {
-            $detachedCount = $this->comicTagRepository->detachAllTags($comic);
-            return [
-                'success' => true,
-                'detached' => $detachedCount,
-                'attached' => 0
-            ];
+            return [];
         }
 
         $validatedTagIds = $this->validateAndNormalizeTagIds($tagIds);

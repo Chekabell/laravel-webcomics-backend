@@ -29,8 +29,8 @@ class ComicRepository{
         }
 
         // Фильтрация по статусу
-        if ($indexComicDTO->status && $isWriterOrAdmin) {
-            $query->where('status', $indexComicDTO->status);
+        if ($indexComicDTO->status == 'draft' && $isWriterOrAdmin) {
+            $query->draft();
         } else {
             $query->published();
         }
@@ -78,8 +78,7 @@ class ComicRepository{
     public function show(Comic $comic){
         $comic->load([
             'author',
-            'tags',
-            'chapters'
+            'tags'
         ]);
         return $comic;
     }

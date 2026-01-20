@@ -20,10 +20,10 @@ class UpdateComicDTO{
             title: $data['title'] ?? null,
             description: $data['description'] ?? null,
             year: $data['year'] ?? null,
-            type: $data['type'] ?? 'other',
+            type: $data['type'] ?? null,
             cover_image: $data['cover_image'] ?? null,
             tags: $data['tags'] ?? null,
-            status: $data['status'] ?? 'draft',
+            status: $data['status'] ?? null,
         );
     }
 
@@ -36,11 +36,5 @@ class UpdateComicDTO{
             'cover_image' => $this->path_cover_image,
             'status' => $this->status,
         ];
-    }
-
-    // Метод для обработки файла
-    public function storeCoverImage(string $path = 'ERROR')
-    {
-        $this->path_cover_image = $this->cover_image->store($path, 'public');
     }
 }

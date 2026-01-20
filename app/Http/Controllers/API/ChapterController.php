@@ -33,9 +33,9 @@ class ChapterController extends Controller
 
             $canRead = false;
 
-            if($user->isWriter() && $user->id === $comic->author_id)
+            if ($user->isWriter() && $user->id === $comic->author_id)
                 $canRead = true;
-            elseif($user->isAdmin())
+            elseif ($user->isAdmin())
                 $canRead = true;
 
             if (!$canRead) {
@@ -44,10 +44,11 @@ class ChapterController extends Controller
         }
 
         $query = $comic->chapters()
-            ->orderBy('chapter_number')
-            ->orderBy('chapter_decimal');
+            ->orderBy('chapter_number', 'desc')
+            ->orderBy('chapter_decimal', 'desc')
+            ->orderBy('id', 'desc');
 
-        $chapters = $query->paginate($request->per_page ?? 10);
+        $chapters = $query->paginate($request->per_page ?? 5);
 
         return response()->json($chapters);
     }
@@ -59,11 +60,11 @@ class ChapterController extends Controller
      */
     public function store(StoreRequest $storeRequest, Comic $comic)
     {
-        $canStoreChapter= false;
+        $canStoreChapter = false;
 
-        if($storeRequest->user()->isWriter() && $storeRequest->user()->id === $comic->author_id)
+        if ($storeRequest->user()->isWriter() && $storeRequest->user()->id === $comic->author_id)
             $canStoreChapter = true;
-        elseif($storeRequest->user()->isAdmin())
+        elseif ($storeRequest->user()->isAdmin())
             $canStoreChapter = true;
 
         if (!$canStoreChapter) {
@@ -72,15 +73,16 @@ class ChapterController extends Controller
 
         $chapter = $this->chapterService->store($storeRequest->toDTO(), $comic);
 
-        if (!$chapter){
+        if (!$chapter) {
             return response()->json([
                 'message' => 'Chapter with this number already exists'
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return response()->json([
-            'chapter' => $chapter
-        ], 201);
+        return response()->json(
+            new ChapterResource($chapter, options: ['full_chapter_number']),
+            Response::HTTP_CREATED
+        );
     }
 
     /**
@@ -88,9 +90,11 @@ class ChapterController extends Controller
      */
     public function show(Request $request, Comic $comic, int $chapterId)
     {
-        if($comic->status !== 'published' &&
+        if (
+            $comic->status !== 'published' &&
             ((!$request->user()?->isWriter() && $comic->author_id !== !$request->user()?->id) ||
-            !$request->user()?->isAdmin())){
+                !$request->user()?->isAdmin())
+        ) {
             return response()->json(['error' => 'Forbidden'], 403);
         };
 
@@ -103,7 +107,10 @@ class ChapterController extends Controller
             ], 404);
         }
 
-        return new ChapterResource($chapter->load('pages'));
+        return response()->json(
+            new ChapterResource($chapter->load('pages')),
+            Response::HTTP_OK
+        );
     }
 
     /**
@@ -111,11 +118,11 @@ class ChapterController extends Controller
      */
     public function update(UpdateRequest $updateRequest, Comic $comic, Chapter $chapter)
     {
-        $canUpdateChapter= false;
+        $canUpdateChapter = false;
 
-        if($updateRequest->user()->isWriter() && $updateRequest->user()->id === $comic->author_id)
+        if ($updateRequest->user()->isWriter() && $updateRequest->user()->id === $comic->author_id)
             $canUpdateChapter = true;
-        elseif($updateRequest->user()->isAdmin())
+        elseif ($updateRequest->user()->isAdmin())
             $canUpdateChapter = true;
 
         if (!$canUpdateChapter) {
@@ -133,9 +140,9 @@ class ChapterController extends Controller
     public function destroy(Request $request, Comic $comic, Chapter $chapter)
     {
         $canDestroyChapter = false;
-        if($request->user()->isWriter() && $request->user()->id === $comic->author_id)
+        if ($request->user()->isWriter() && $request->user()->id === $comic->author_id)
             $canDestroyChapter = true;
-        elseif($request->user()->isAdmin())
+        elseif ($request->user()->isAdmin())
             $canDestroyChapter = true;
 
         if (!$canDestroyChapter) {

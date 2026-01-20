@@ -13,70 +13,76 @@ use App\Repositories\ComicRepository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
-class ComicService{
+class ComicService
+{
 
-     public function __construct(
+    public function __construct(
         private ComicRepository $comicRepository
     ) {}
 
     const CACHE_TTL = 300;
 
-    public function indexByFilter(IndexComicDTO $indexComicDTO, ?User $user = null){
+    public function indexByFilter(IndexComicDTO $indexComicDTO, ?User $user = null)
+    {
         $cacheKey = 'comics.index.' . md5(serialize($indexComicDTO->toArray()));
 
-        $comics = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($indexComicDTO, $user) {
+        $comics = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($indexComicDTO, $user) {});
 
-        });
-
-        if($user){
-                return $this->comicRepository->indexByFilter($indexComicDTO, $user->isWriter());
-            } else{
-                return $this->comicRepository->indexByFilter($indexComicDTO);
-            }
+        if ($user) {
+            return $this->comicRepository->indexByFilter($indexComicDTO, $user->isWriter());
+        } else {
+            return $this->comicRepository->indexByFilter($indexComicDTO);
+        }
 
         return $comics;
     }
 
-    public function store(StoreComicDTO $storeComicDTO, int $userId){
+    public function store(StoreComicDTO $storeComicDTO, int $userId)
+    {
         $comic = DB::transaction(function () use ($storeComicDTO, $userId) {
             // Сохраняем обложку, если она есть
             if ($storeComicDTO->cover_image) {
-                $path = 'comics/covers/'. (Comic::max('id') ?? 0) + 1 . $storeComicDTO->cover_image->getExtension();
+                $newId =  Comic::max('id');
+                $path = 'comics/covers/' . $newId  . '.' . $storeComicDTO->cover_image->extension();
 
-                $success = Storage::disk('s3')->put($path, $storeComicDTO->cover_image,'public');
-
-                if(!$success){
-                    throw new Exception('Не удалось сохранить обложку комикса на сервере');
-                }
+                $success = Storage::disk('s3')->putFileAs(
+                    'comics/covers/',
+                    $storeComicDTO->cover_image,
+                    $newId . '.' . $storeComicDTO->cover_image->extension(),
+                    'public'
+                );
 
                 $url = Storage::disk('s3')->url($path);
+                $storeComicDTO->path_cover_image = $url;
             }
+
 
             // Добавляем автора
             $storeComicDTO->author_id = $userId;
-            $storeComicDTO->path_cover_image = $url;
 
             return $this->comicRepository->store($storeComicDTO);
         });
         return $comic;
     }
 
-    public function show(Comic $comic){
+    public function show(Comic $comic)
+    {
         // Увеличиваем просмотры
-        if ($comic->status === 'published'){
+        if ($comic->status === 'published') {
             $comic->incrementViews();
         }
 
         $cacheKey = "comic.{$comic->id}.full";
 
-        $comic = Cache::remember($cacheKey, 60*60, function () use ($comic) {
+        $comic = Cache::remember($cacheKey, 60 * 60, function () use ($comic) {
             return $this->comicRepository->show($comic);
         });
 
         return $comic;
     }
 
-    public function update(UpdateComicDTO $updateComicDTO, Comic $comic){
+    public function update(UpdateComicDTO $updateComicDTO, Comic $comic)
+    {
         DB::transaction(function () use ($comic, $updateComicDTO) {
             // Обновляем обложку если есть новая
             if ($updateComicDTO->cover_image) {
@@ -85,22 +91,35 @@ class ComicService{
                     Storage::disk('s3')->delete($comic->cover_image);
                 }
 
-                $updateComicDTO->storeCoverImage('comics/'. $comic->id + 1 . $updateComicDTO->cover_image->getExtension());
+                $path = 'comics/covers/' . $comic->id . '.' . $updateComicDTO->cover_image->extension();
+
+                $success = Storage::disk('s3')->putFileAs(
+                    'comics/covers/',
+                    $updateComicDTO->cover_image,
+                    $comic->id . '.' . $updateComicDTO->cover_image->extension(),
+                    'public'
+                );
+
+                if (!$success) {
+                    throw new Exception('Не удалось сохранить обложку комикса на сервере');
+                }
+                $url = Storage::disk('s3')->url($path);
+                $updateComicDTO->path_cover_image = $url;
             }
             // Обновляем комикс
             $this->comicRepository->update($updateComicDTO, $comic);
         });
     }
 
-    public function destroy(Comic $comic){
+    public function destroy(Comic $comic)
+    {
         DB::transaction(function () use ($comic) {
             // Удаляем обложку, если она есть
-            if ($comic->cover_image && Storage::disk('public')->exists($comic->cover_image)) {
-                Storage::disk('public')->delete($comic->cover_image);
+            if ($comic->cover_image && Storage::disk('s3')->exists($comic->cover_image)) {
+                Storage::disk('s3')->delete($comic->cover_image);
             }
 
             $this->comicRepository->destroy($comic);
-
         });
     }
 }

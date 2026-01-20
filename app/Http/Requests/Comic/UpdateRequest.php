@@ -26,7 +26,7 @@ class UpdateRequest extends FormRequest
             'title' => 'sometimes|string|max:150',
             'description' => 'sometimes|string',
             'year' => 'sometimes|integer|min:1900|max:' . date('Y')+1,
-            'type' => 'sometimes|in:manga,manhwa,manhua,western,other',
+            'type' => 'sometimes|in:манга,манхва,маньхуа,западное,другое',
             'cover_image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'tags' => 'sometimes|array',
             'tags.*' => 'exists:tags,id',

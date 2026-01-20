@@ -30,6 +30,8 @@ class Tag extends Model
         'usage_count' => 'integer',
     ];
 
+    public $timestamps = false;
+
     public function comics(): BelongsToMany
     {
         return $this->belongsToMany(Comic::class, 'comic_tag');
@@ -71,14 +73,6 @@ class Tag extends Model
     public function isUsed(): bool
     {
         return $this->usage_count > 0;
-    }
-
-    /**
-     * Проверить, можно ли удалить тег
-     */
-    public function canBeDeleted(): bool
-    {
-        return !$this->isUsed();
     }
 
     /**

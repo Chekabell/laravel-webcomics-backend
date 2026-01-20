@@ -15,7 +15,10 @@ class ComicCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'data' => ComicResource::collection($this->collection),
+            'data' => $this->collection->map(
+                    fn($comic) =>
+                    new ComicResource($comic, options: ['description'])
+                ),
 
             'meta' => [
                 'current_page' => $this->currentPage(),

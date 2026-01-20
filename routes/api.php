@@ -8,10 +8,23 @@ use App\Http\Controllers\API\ComicController;
 use App\Http\Controllers\API\ChapterController;
 use App\Http\Controllers\API\RateController;
 use App\Http\Controllers\API\CommentController;
+use App\Http\Controllers\API\PageController;
+use App\Http\Controllers\API\TagController;
+use Illuminate\Http\Request;
+
+Route::put('/debug-upload', function (Request $request) {
+    return response()->json([
+        'method' => $request->method(),
+        'has_file' => $request->hasFile('file'),
+        'all_data_keys' => array_keys($request->all()),
+        'request_content_type' => $request->header('content-type'),
+    ]);
+});
 
 // Публичные маршруты
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/tags', [TagController::class, 'index']);
 
 // Аутентификация опциональна
 Route::middleware('optional.auth')->group(function () {
@@ -23,6 +36,7 @@ Route::middleware('optional.auth')->group(function () {
     Route::get('/comics/{comic}/chapters', [ChapterController::class, 'index']);
     Route::get('/comics/{comic}/comments', [CommentController::class, 'index']);
     Route::get('/comics/{comic}/chapters/{chapter}', [ChapterController::class, 'show']);
+    Route::get('/comics/{comic}/chapters/{chapter}/pages', [PageController::class, 'index']);
 });
 
 // Аутентифицированные пользователи
@@ -51,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Создание комиксов
         Route::post('/comics', [ComicController::class, 'store']);
         Route::put('/comics/{comic}', [ComicController::class, 'update']);
+        Route::patch('/comics/{comic}', [ComicController::class, 'publish']);
         Route::delete('/comics/{comic}', [ComicController::class, 'destroy']);
 
         // Добавление глав

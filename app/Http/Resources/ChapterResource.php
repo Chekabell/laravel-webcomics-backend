@@ -9,14 +9,14 @@ class ChapterResource extends JsonResource
 {
     protected bool $showFullChapterNumber = false;
     protected bool $showPagesCount = false;
-
-    // Фабричный метод для создания с параметрами
-    public static function makeWithOptions($resource, array $options = []): self
+    public function __construct($resource,  $index = null, ?array $options = null,)
     {
-        $instance = new static($resource);
-        $instance->showFullChapterNumber = $options['full_chapter_number'] ?? false;
-        $instance->showPagesCount = $options['pages_count'] ?? false;
-        return $instance;
+        parent::__construct($resource);
+
+        if (is_array($options)) {
+            $this->showFullChapterNumber = in_array('full_chapter_number', $options) ? true : false;
+            $this->showPagesCount = in_array('pages_count', $options) ? true : false;
+        }
     }
     /**
      * Transform the resource into an array.
@@ -44,22 +44,6 @@ class ChapterResource extends JsonResource
                     'id' => $this->comic->id,
                     'title' => $this->comic->title,
                 ];
-            }),
-
-            'pages' => $this->whenLoaded('pages', function () {
-                return $this->pages->map(function ($page) {
-                    return [
-                        'id' => $page->id,
-                        'page_number' => $page->page_number,
-                        'image_url' => $page->image_url_final,
-                        'width' => $page->width,
-                        'height' => $page->height,
-                        'format' => $page->format,
-                        'file_size' => $page->file_size,
-                        'file_size_formatted' => $page->file_size_formatted,
-                        'dimensions' => $page->getDimensions(),
-                    ];
-                });
             }),
 
             // Навигация

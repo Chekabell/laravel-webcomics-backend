@@ -26,8 +26,8 @@ class StoreRequest extends FormRequest
             'title' => 'required|string|max:150',
             'description' => 'nullable|string',
             'year' => 'required|integer|min:1900|max:' . date('Y')+1,
-            'type' => 'required|in:manga,manhwa,manhua,western,other',
-            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'type' => 'required|in:манга,манхва,маньхуа,западное,другое',
+            'cover_image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'tags' => 'sometimes|array',
             'tags.*' => 'exists:tags,id',
             'status' => 'sometimes|in:draft,published'
