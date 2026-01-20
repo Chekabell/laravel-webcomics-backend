@@ -51,6 +51,9 @@ class ComicService
                     $newId . '.' . $storeComicDTO->cover_image->extension(),
                     'public'
                 );
+                if(!$success){
+                    throw new Exception('Ошибка записи в хранилище S3');
+                }
 
                 $url = Storage::disk('s3')->url($path);
                 $storeComicDTO->path_cover_image = $url;

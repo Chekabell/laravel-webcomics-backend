@@ -11,6 +11,7 @@ use App\Http\Resources\ComicResource;
 use App\Models\Comic;
 use App\Services\ComicService;
 use App\Services\TagService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,21 +44,20 @@ class ComicController extends Controller
     {
         //Валидация
         $storeComicDTO = $storeRequest->toDTO();
-
-        //Сохранение комикса
-        $comic = $this->comicService->store(
-            $storeComicDTO,
-            $storeRequest->user()->id
-        );
-
-        //Обработка тэгов
-        $this->tagService->syncComicTags(
-            $comic,
-            $storeRequest->input('tags')
-        );
-
-        return response()->json(new ComicResource(
+        try {
+            //Сохранение комикса
+            $comic = $this->comicService->store(
+                $storeComicDTO,
+                $storeRequest->user()->id
+            );
+            //Обработка тэгов
+            $this->tagService->syncComicTags(
                 $comic,
+                $storeRequest->input('tags')
+            );
+
+            return response()->json(new ComicResource(
+                $comic->load('author'),
                 options: [
                     'description',
                     'ratingc_count',
@@ -68,7 +68,11 @@ class ComicController extends Controller
                     'rating_stars',
                     'published_at',
                     'first_chapter'
-                ]), Response::HTTP_CREATED);
+                ]
+            ), Response::HTTP_CREATED);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+        };
     }
 
     /**
