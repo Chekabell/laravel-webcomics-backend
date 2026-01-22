@@ -3,7 +3,7 @@ FROM php:8.3-fpm
 
 # Устанавливаем зависимости
 RUN apt update
-RUN apt install -y libpng-dev zip unzip curl git iproute2 libpq-dev php8.3-zip
+RUN apt install -y libpng-dev zip unzip curl git iproute2 libpq-dev php8.2-zip
 RUN docker-php-ext-install pdo pdo_pgsql gd
 
 # Устанавливаем Composer
