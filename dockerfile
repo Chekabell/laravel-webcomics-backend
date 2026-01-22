@@ -3,8 +3,8 @@ FROM php:8.3-fpm
 
 # Устанавливаем зависимости
 RUN apt update
-RUN apt install -y libpng-dev zip unzip curl git iproute2
-RUN docker-php-ext-install pdo pdo_mysql gd
+RUN apt install -y libpng-dev zip unzip curl git iproute2 libpq-dev
+RUN docker-php-ext-install pdo pdo_pgsql gd
 
 # Устанавливаем Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
