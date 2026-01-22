@@ -42,7 +42,7 @@ class ComicService
         $comic = DB::transaction(function () use ($storeComicDTO, $userId) {
             // Сохраняем обложку, если она есть
             if ($storeComicDTO->cover_image) {
-                $newId =  Comic::max('id');
+                $newId =  Comic::max('id') + 1;
                 $path = 'comics/covers/' . $newId  . '.' . $storeComicDTO->cover_image->extension();
 
                 $success = Storage::disk('s3')->putFileAs(
@@ -51,7 +51,7 @@ class ComicService
                     $newId . '.' . $storeComicDTO->cover_image->extension(),
                     'public'
                 );
-                if(!$success){
+                if (!$success) {
                     throw new Exception('Ошибка записи в хранилище S3');
                 }
 
@@ -89,6 +89,22 @@ class ComicService
         DB::transaction(function () use ($comic, $updateComicDTO) {
             // Обновляем обложку если есть новая
             if ($updateComicDTO->cover_image) {
+                $filePath = $comic->cover_image;
+
+                $disk = config('filesystems.default');
+
+
+                if ($disk === 's3' && filter_var($filePath, FILTER_VALIDATE_URL)) {
+                    $parsed = parse_url($filePath);
+                    $filePath = ltrim($parsed['path'], '/');
+
+                    // Убираем bucket name из пути если он есть
+                    $bucket = config('filesystems.disks.s3.bucket');
+                    if (strpos($filePath, $bucket . '/') === 0) {
+                        $filePath = substr($filePath, strlen($bucket) + 1);
+                    }
+                }
+
                 // Удаляем старую
                 if ($comic->cover_image && Storage::disk('s3')->exists($comic->cover_image)) {
                     Storage::disk('s3')->delete($comic->cover_image);
